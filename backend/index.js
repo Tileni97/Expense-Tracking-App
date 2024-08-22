@@ -7,6 +7,11 @@ import { expressMiddleware } from "@apollo/server/express4";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import dotenv from "dotenv";
 
+import { buildContext } from "graphql-passport";
+import passport from "passport";
+import session from "express-session";
+import connectMongo from "connect-mongodb-session";
+
 import mergedResolvers from "./resolvers/index.js "; // import mergedResolvers from "./resolvers/index.js"
 import mergedTypeDefs from "./typeDefs/index.js"; // import mergedTypeDefs from "./typeDefs/index.js"
 
@@ -15,6 +20,34 @@ import connectDB from "./db/connectDB.js"; // import connectDB from "./config/db
 dotenv.config();
 const app = express();
 const httpServer = http.createServer(app);
+
+const MongoDBStore = connectMongo(session);
+
+const store = new MongoDBStore({
+  uri: process.env.MONGO_URI,
+  collection: "sessions",
+});
+store.on("error", (err) => {
+  console.log(err);
+});
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false, //this option specifies whether to save the session to the store on every request
+    saveUninitialized: false, //this option specifies whether to create a session for an anonymous user
+    store: store, 
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+      httpOnly: true, //this option prevents the cross-site scripting attacks
+    },
+    store: store, //this option specifies the session store to use for storing session data
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
 
 const server = new ApolloServer({
   // create a new ApolloServer instance with the merged type definitions and resolvers
@@ -30,12 +63,15 @@ await server.start();
 // and our expressMiddleware function.
 app.use(
   "/",
-  cors(),
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  }),
   express.json(),
   // expressMiddleware accepts the same arguments:
   // an Apollo Server instance and optional configuration options
   expressMiddleware(server, {
-    context: async ({ req }) => ({ req }),
+    context: async ({ req,res }) =>buildContext({ req,res }), //context is an object that is shared across all resolvers
   })
 );
 
@@ -43,16 +79,7 @@ app.use(
 await new Promise((resolve) => httpServer.listen({ port: 4000 }, resolve));
 await connectDB(); // connect to the database
 
-
 console.log(`🚀 Server ready at http://localhost:4000/`);
-
-
-
-
-
-
-
-
 
 //What is Apollo Server?
 // Apollo Server is a community-driven, open-source GraphQL server that works with any GraphQL schema. It is built on top of the Apollo platform and provides a flexible and powerful way to build, deploy, and scale GraphQL APIs.
