@@ -5,7 +5,7 @@ import cors from "cors";
 import { ApolloServer } from "@apollo/server"; // import ApolloServer from "apollo-server"
 import { expressMiddleware } from "@apollo/server/express4";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
-import dotenv from "dotenv";
+import dotenv, { config } from "dotenv";
 
 import { buildContext } from "graphql-passport";
 import passport from "passport";
@@ -16,8 +16,11 @@ import mergedResolvers from "./resolvers/index.js "; // import mergedResolvers f
 import mergedTypeDefs from "./typeDefs/index.js"; // import mergedTypeDefs from "./typeDefs/index.js"
 
 import connectDB from "./db/connectDB.js"; // import connectDB from "./config/db.js"
+import { configurePassport } from "./passport/passport.config.js"; // import configurePassport from "./passport/passport.config.js"
 
 dotenv.config();
+configurePassport(); 
+
 const app = express();
 const httpServer = http.createServer(app);
 

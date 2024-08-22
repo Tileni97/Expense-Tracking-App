@@ -1,15 +1,118 @@
-import { users } from '../dummyData/data.js';
+// import Transaction from "../models/transaction.model.js";
+import User from "../models/user.model.js";
+import bcrypt from "bcryptjs";
 
+
+// Mutations and Queries for the User model
 const userResolver = {
-    Query: {
-        users: () => { 
-            return users;
-        },
-        user: (_, { userId }) => {
-            return users.find(user => user._id === userId);
-        },
+  Mutation: {
+    signUp: async (_, { input }, context) => {
+      //this is the resolver function for the signUp mutation
+      try {
+        const { username, name, password, gender } = input;
+
+        if (!username || !name || !password || !gender) {
+          //check if any of the required fields are missing
+          throw new Error("All fields are required");
+        }
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+          throw new Error("User already exists");
+        }
+
+        const salt = await bcrypt.genSalt(10); //here we generate a salt to hash the password with a complexity of 10
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // https://avatar-placeholder.iran.liara.run/
+        const boyProfilePic = `https://avatar.iran.liara.run/public/boy?username=${username}`;
+        const girlProfilePic = `https://avatar.iran.liara.run/public/girl?username=${username}`;
+
+        const newUser = new User({
+          //create a new user document
+          username,
+          name,
+          password: hashedPassword,
+          gender,
+          profilePicture: gender === "male" ? boyProfilePic : girlProfilePic,
+        });
+
+        await newUser.save(); //save the new user document to the database
+        await context.login(newUser); //log in the new user
+        return newUser;
+      } catch (err) {
+        console.error("Error in signUp: ", err);
+        throw new Error(err.message || "Internal server error");
+      }
     },
-    Mutation: {},
+
+    login: async (_, { input }, context) => {
+      //this is the resolver function for the login mutation
+      try {
+        const { username, password } = input;
+        if (!username || !password) throw new Error("All fields are required");
+        const { user } = await context.authenticate("graphql-local", {
+          username,
+          password,
+        });
+
+        await context.login(user);
+        return user;
+      } catch (err) {
+        console.error("Error in login:", err);
+        throw new Error(err.message || "Internal server error");
+      }
+    },
+    logout: async (_, __, context) => {
+      //this is the resolver function for the logout mutation
+      try {
+        await context.logout();
+        context.req.session.destroy((err) => {
+          if (err) throw err;
+        });
+        context.res.clearCookie("connect.sid"); //clear the cookie
+
+        return { message: "Logged out successfully" };
+      } catch (err) {
+        console.error("Error in logout:", err);
+        throw new Error(err.message || "Internal server error");
+      }
+    },
+  },
+  // Query resolvers for the User model
+  Query: {
+    authUser: async (_, __, context) => {
+      //this is the resolver function for the authUser query
+      try {
+        const user = await context.getUser(); //get the authenticated user
+        return user;
+      } catch (err) {
+        console.error("Error in authUser: ", err);
+        throw new Error("Internal server error");
+      }
+    },
+    user: async (_, { userId }) => {
+      //fetch a single user by their id
+      try {
+        const user = await User.findById(userId);
+        return user;
+      } catch (err) {
+        console.error("Error in user query:", err);
+        throw new Error(err.message || "Error getting user");
+      }
+    },
+  },
+  //User: {
+    //transactions: async (parent) => {
+      //fetch all transactions associated with a user
+      //try {
+        //const transactions = await Transaction.find({ userId: parent._id });
+        //return transactions;
+      //} catch (err) {
+        //console.log("Error in user.transactions resolver: ", err);
+        //throw new Error(err.message || "Internal server error");
+      //}
+    //},
+  //},
 };
 
 export default userResolver;
