@@ -12,22 +12,6 @@ import { GET_TRANSACTION_STATISTICS } from "../graphql/queries/transaction.query
 import { GET_AUTHENTICATED_USER } from "../graphql/queries/user.query";
 import { useEffect, useState } from "react";
 
-// const chartData = {
-// 	labels: ["Saving", "Expense", "Investment"],
-// 	datasets: [
-// 		{
-// 			label: "%",
-// 			data: [13, 8, 3],
-// 			backgroundColor: ["rgba(75, 192, 192)", "rgba(255, 99, 132)", "rgba(54, 162, 235)"],
-// 			borderColor: ["rgba(75, 192, 192)", "rgba(255, 99, 132)", "rgba(54, 162, 235, 1)"],
-// 			borderWidth: 1,
-// 			borderRadius: 30,
-// 			spacing: 10,
-// 			cutout: 130,
-// 		},
-// 	],
-// };
-
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const HomePage = () => {
@@ -66,14 +50,14 @@ const HomePage = () => {
 
       categories.forEach((category) => {
         if (category === "saving") {
-          backgroundColors.push("rgba(75, 192, 192)");
-          borderColors.push("rgba(75, 192, 192)");
+          backgroundColors.push("rgba(34, 197, 94, 0.8)"); // Green color
+          borderColors.push("rgba(34, 197, 94, 1)");
         } else if (category === "expense") {
-          backgroundColors.push("rgba(255, 99, 132)");
-          borderColors.push("rgba(255, 99, 132)");
+          backgroundColors.push("rgba(239, 68, 68, 0.8)"); // Red/pink color
+          borderColors.push("rgba(239, 68, 68, 1)");
         } else if (category === "investment") {
-          backgroundColors.push("rgba(54, 162, 235)");
-          borderColors.push("rgba(54, 162, 235)");
+          backgroundColors.push("rgba(59, 130, 246, 0.8)"); // Blue color
+          borderColors.push("rgba(59, 130, 246, 1)");
         }
       });
 
@@ -94,8 +78,7 @@ const HomePage = () => {
   const handleLogout = async () => {
     try {
       await logout();
-      // Clear the Apollo Client cache FROM THE DOCS
-      // https://www.apollographql.com/docs/react/caching/advanced-topics/#:~:text=Resetting%20the%20cache,any%20of%20your%20active%20queries
+
       client.resetStore();
     } catch (error) {
       console.error("Error logging out:", error);
@@ -107,8 +90,8 @@ const HomePage = () => {
     <>
       <div className="flex flex-col gap-6 items-center max-w-7xl mx-auto z-20 relative justify-center">
         <div className="flex items-center">
-          <p className="md:text-4xl text-2xl lg:text-4xl font-bold text-center relative z-50 mb-4 mr-4 bg-gradient-to-r from-pink-600 via-indigo-500 to-pink-400 inline-block text-transparent bg-clip-text">
-            Spend wisely, track wisely
+          <p className="md:text-4xl text-2xl lg:text-4xl font-bold text-center relative z-50 mb-4 mr-4 bg-gradient-to-r from-green-400 via-blue-500 to-green-400 inline-block text-transparent bg-clip-text">
+            Master Your Money, Master Your Life
           </p>
           <img
             src={authUserData?.authUser.profilePicture}
