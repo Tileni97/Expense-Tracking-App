@@ -20,18 +20,39 @@ const SignUpPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (
+      !signUpData.name ||
+      !signUpData.username ||
+      !signUpData.password ||
+      !signUpData.gender
+    ) {
+      toast.error("Please fill in all fields");
+      return;
+    }
     try {
-      await signup({
+      const { data } = await signup({
         variables: {
           input: signUpData,
         },
       });
+      console.log("Signup successful:", data);
+      toast.success("Signup successful!");
+      // You might want to redirect the user or update the UI here
     } catch (error) {
-      console.error("Error:", error);
-      toast.error(error.message);
+      console.error("Error during signup:", error);
+      if (error.graphQLErrors) {
+        error.graphQLErrors.forEach(({ message, locations, path }) => {
+          console.error(
+            `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
+          );
+        });
+      }
+      if (error.networkError) {
+        console.error(`[Network error]: ${error.networkError}`);
+      }
+      toast.error(error.message || "An error occurred during signup");
     }
   };
-
   const handleChange = (e) => {
     const { name, value, type } = e.target;
 
