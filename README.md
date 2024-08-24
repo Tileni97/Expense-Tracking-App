@@ -12,7 +12,7 @@ BudgetMaster is a web application designed to help you manage your budget and ex
 - 🎃 **Authentication**: Secure user authentication with Passport.js
 - 🚀 **State Management**: Global state management with Apollo Client
 - 🐞 **Error Handling**: Robust error handling for server and client
-- ⭐ **Deployment**: Easy deployment with Render
+- ⭐ **Deployment**:Deployed with Render
 
 ## Setup
 
