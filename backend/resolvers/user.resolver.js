@@ -1,43 +1,38 @@
-// import Transaction from "../models/transaction.model.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 
-
-// Mutations and Queries for the User model
 const userResolver = {
   Mutation: {
     signUp: async (_, { input }, context) => {
-      //this is the resolver function for the signUp mutation
       try {
-        const { username, name, password, gender } = input;
+        const { username, email, name, password, gender } = input;
 
-        if (!username || !name || !password || !gender) {
-          //check if any of the required fields are missing
+        if (!username || !email || !name || !password || !gender) {
           throw new Error("All fields are required");
         }
-        const existingUser = await User.findOne({ username });
+
+        const existingUser = await User.findOne({ $or: [{ username }, { email }] });
         if (existingUser) {
-          throw new Error("User already exists");
+          throw new Error("User with this username or email already exists");
         }
 
-        const salt = await bcrypt.genSalt(10); //here we generate a salt to hash the password with a complexity of 10
+        const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // https://avatar-placeholder.iran.liara.run/
-        const boyProfilePic = `https://avatar.iran.liara.run/public/boy?username=${username}`;
-        const girlProfilePic = `https://avatar.iran.liara.run/public/girl?username=${username}`;
+        const profilePicture = `https://avatar.iran.liara.run/public/${gender === "male" ? "boy" : "girl"}?username=${username}`;
 
         const newUser = new User({
-          //create a new user document
           username,
+          email,
           name,
           password: hashedPassword,
           gender,
-          profilePicture: gender === "male" ? boyProfilePic : girlProfilePic,
+          profilePicture,
+          createdAt: new Date().toISOString(),
         });
 
-        await newUser.save(); //save the new user document to the database
-        await context.login(newUser); //log in the new user
+        await newUser.save();
+        await context.login(newUser);
         return newUser;
       } catch (err) {
         console.error("Error in signUp: ", err);
@@ -46,44 +41,64 @@ const userResolver = {
     },
 
     login: async (_, { input }, context) => {
-      //this is the resolver function for the login mutation
       try {
-        const { username, password } = input;
-        if (!username || !password) throw new Error("All fields are required");
-        const { user } = await context.authenticate("graphql-local", {
-          username,
-          password,
-        });
+        const { email, password } = input;
+        if (!email || !password) throw new Error("All fields are required");
+
+        const user = await User.findOne({ email });
+        if (!user) throw new Error("User not found");
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) throw new Error("Invalid credentials");
 
         await context.login(user);
+        user.lastLogin = new Date().toISOString();
+        await user.save();
         return user;
       } catch (err) {
         console.error("Error in login:", err);
         throw new Error(err.message || "Internal server error");
       }
     },
+
     logout: async (_, __, context) => {
-      //this is the resolver function for the logout mutation
       try {
         await context.logout();
         context.req.session.destroy((err) => {
           if (err) throw err;
         });
-        context.res.clearCookie("connect.sid"); //clear the cookie
+        context.res.clearCookie("connect.sid");
 
-        return { message: "Logged out successfully" };
+        return { message: "Logged out successfully", success: true };
       } catch (err) {
         console.error("Error in logout:", err);
         throw new Error(err.message || "Internal server error");
       }
     },
+
+    updateProfile: async (_, { input }, context) => {
+      try {
+        const user = await context.getUser();
+        if (!user) throw new Error("Authentication required");
+
+        const updatedUser = await User.findByIdAndUpdate(
+          user._id,
+          { $set: input },
+          { new: true }
+        );
+
+        return updatedUser;
+      } catch (err) {
+        console.error("Error in updateProfile:", err);
+        throw new Error(err.message || "Internal server error");
+      }
+    },
   },
-  // Query resolvers for the User model
+
   Query: {
     authUser: async (_, __, context) => {
-      //this is the resolver function for the authUser query
       try {
-        const user = await context.getUser(); //get the authenticated user
+        const user = await context.getUser();
         return user;
       } catch (err) {
         console.error("Error in authUser: ", err);
@@ -91,7 +106,6 @@ const userResolver = {
       }
     },
     user: async (_, { userId }) => {
-      //fetch a single user by their id
       try {
         const user = await User.findById(userId);
         return user;
@@ -101,18 +115,18 @@ const userResolver = {
       }
     },
   },
-  //User: {
-    //transactions: async (parent) => {
-      //fetch all transactions associated with a user
-      //try {
-        //const transactions = await Transaction.find({ userId: parent._id });
-        //return transactions;
-      //} catch (err) {
-        //console.log("Error in user.transactions resolver: ", err);
-        //throw new Error(err.message || "Internal server error");
-      //}
-    //},
-  //},
+
+  User: {
+    transactions: async (parent) => {
+      try {
+        const transactions = await Transaction.find({ userId: parent._id });
+        return transactions;
+      } catch (err) {
+        console.log("Error in user.transactions resolver: ", err);
+        throw new Error(err.message || "Internal server error");
+      }
+    },
+  },
 };
 
 export default userResolver;
